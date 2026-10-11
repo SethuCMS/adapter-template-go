@@ -1,0 +1,44 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.22", "stable"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Install protoc
+        run: sudo apt-get update && sudo apt-get install -y protobuf-compiler
+      - run: sh scripts/dev.sh tools
+      - run: echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+      - run: sh scripts/dev.sh proto
+      - run: go mod tidy
+      - run: sh scripts/dev.sh test
+      - run: sh scripts/dev.sh build
+
+  ci-ok:
+    name: CI OK
+    if: always()
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          [ "${{ needs.test.result }}" = "success" ]

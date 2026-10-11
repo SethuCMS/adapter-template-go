@@ -1,0 +1,9 @@
+bin/
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage.out
